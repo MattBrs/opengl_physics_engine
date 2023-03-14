@@ -1,0 +1,13 @@
+-std=c++20
+-Wall
+-I/opt/homebrew/include/
+-I./libs/Constants
+-I./libs/Utils
+-I./libs/Window
+-I./libs/Types
+-I./libs/VerletObject
+-I./libs/VerletSolver
+-I./libs/VerletRect
+-framework OpenGL
+-framework IOKit
+-framework Cocoa
