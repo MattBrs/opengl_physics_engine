@@ -1,0 +1,8 @@
+CMakeCache.*
+Make*
+main
+cmake_install.*
+lib*.a
+CMakeFiles*
+.DS_Store
+
