@@ -31,6 +31,7 @@ void add_shader(
 bool create_triangle();
 bool compile_shaders();
 void print_shader_log(GLuint shader);
+void process_input(GLFWwindow *window);
 
 int main(int argc, char *args[]) {
     if (!init()) {
@@ -92,22 +93,31 @@ void run() {
     // }
 
     while (!glfwWindowShouldClose(g_window.get_window())) {
-        glfwPollEvents();
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        process_input(g_window.get_window());
 
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        // set color to use when clear function is called
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
         glUseProgram(program_id);
-
         glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-        glBindVertexArray(0);
+        // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+        glBindVertexArray(0);
         glUseProgram(0);
 
         glfwSwapBuffers(g_window.get_window());
+        glfwPollEvents();
+
+        /*
+         * Try to make a couple triangles with different VBOs and then call
+         * bindVertexArray and draw them
+         * */
     }
-    // g_window.test_render(VAO, program_id);
 }
 
 void spawn_rect(Solver &physics_simulation, int pos_x, int pos_y) {
@@ -119,29 +129,44 @@ void spawn_rect(Solver &physics_simulation, int pos_x, int pos_y) {
 }
 
 bool create_triangle() {
-    GLfloat vertex_data[] = {-1.0f, -1.0f, 0.0f, 1.0f, -1.0f,
-                             0.0f,  0.0f,  1.0f, 0.0f};
+    // triangle vertices in normalized positions
+    // (opengl operates from -1.0 to 1.0f)
+    GLfloat vertex_data[] = {-0.5f, -0.3f, 0.0f, 0.0f, 0.5f,  0.0f,
+                             0.0f,  -0.2f, 0.0f, 0.5f, -0.3f, 0.0f};
 
-    GLuint index_data[] = {0, 1, 2};
+    GLuint index_data[] = {0, 1, 2, 1, 2, 3};
 
+    // The VAO saves all the information about the things we want to draw
+    // so we declare it before all the VBO, etc creation and setting.
+    // Then we unbind it and select it if we want to use it.
+    // (Say we want to have multiple triangles and rectangles, we first make the
+    // VAOs and VBOs, etc and then we select it for drawing).
     glGenVertexArrays(1, &VAO);
     glBindVertexArray(VAO);
 
+    // set the Vertex Buffer Objects
+    // (buffer in GPU memory with vertex positions)
     glGenBuffers(1, &VBO);
+
+    // OpenGL allows different buffers open at the
+    // same time as long taht they are of different types
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
+
+    // load the data in the current buffer
     glBufferData(
         GL_ARRAY_BUFFER, sizeof(vertex_data), vertex_data, GL_STATIC_DRAW);
 
-    // glGenBuffers(1, &EBO);
-    // glBindBuffer(GL_ARRAY_BUFFER, EBO);
-    // glBufferData(
-    //     GL_ARRAY_BUFFER, sizeof(index_data), index_data, GL_STATIC_DRAW);
+    glGenBuffers(1, &EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(
+        GL_ELEMENT_ARRAY_BUFFER, sizeof(index_data), index_data,
+        GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, 3 * sizeof(float), 0, (void *)0);
     glEnableVertexAttribArray(0);
 
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
+    // glBindBuffer(GL_ARRAY_BUFFER, 0);
+    // glBindVertexArray(0);
 
     return true;
 }
@@ -165,6 +190,7 @@ void add_shader(
     }
 
     glAttachShader(shader_program, shader);
+    glDeleteShader(shader);
 }
 
 bool compile_shaders() {
@@ -176,13 +202,13 @@ bool compile_shaders() {
         layout (location = 0) in vec3 pos; \n\
         void main()\n\
         {\n\
-            gl_Position = vec4(0.4 * pos.x, 0.4 * pos.y, pos.z, 1.0);\n\
+            gl_Position = vec4(pos.x, pos.y, pos.z, 1.0);\n\
         }\n\
     "};
     const GLchar *fragment_shader_source[] = {" \n\
-        #version 330 \n\
-        out vec4 colour; \n\
-        void main()\n {\n colour = vec4(1.0, 0.0, 0.0, 1.0);\n }\n"};
+        #version 330 core \n\
+        out vec4 fragColor; \n\
+        void main()\n {\n fragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n }\n"};
 
     add_shader(program_id, *vertex_shader_source, GL_VERTEX_SHADER);
     add_shader(program_id, *fragment_shader_source, GL_FRAGMENT_SHADER);
@@ -205,4 +231,10 @@ bool compile_shaders() {
     }
     printf("Finish adding and validating shaders\n");
     return true;
+}
+
+void process_input(GLFWwindow *window) {
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+        glfwSetWindowShouldClose(window, true);
+    }
 }

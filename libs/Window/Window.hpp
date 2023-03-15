@@ -18,7 +18,6 @@ class Window {
     bool         has_keyboard_focus();
     bool         is_minimized();
     GLFWwindow *&get_window();
-    void         test_render(uint VAO, uint program_id);
 
   private:
     int m_window_heigth;
@@ -34,4 +33,7 @@ class Window {
     bool   m_is_minimized;
     GLuint m_program_id = 0;
     GLint  m_vertex_pos_2d_location = -1;
+
+    static void
+    framebuffer_size_callback(GLFWwindow *window, int width, int height);
 };

@@ -49,9 +49,6 @@ bool Window::init() {
     // enable latest features
     glewExperimental = GL_TRUE;
 
-    // enable newer features
-    glewExperimental = GL_TRUE;
-
     // init glew and check for errors
     GLenum glew_error = glewInit();
     if (glew_error != GLEW_OK) {
@@ -59,10 +56,13 @@ bool Window::init() {
         return false;
     }
 
-    m_window_width = constants::WINDOW_WIDTH;
-    m_window_heigth = constants::WINDOW_HEIGHT;
+    m_window_width = WINDOW_WIDTH;
+    m_window_heigth = WINDOW_HEIGHT;
 
     glViewport(0, 0, m_buffer_width, m_buffer_heigth);
+
+    // when window is resized, adjust viewport size
+    glfwSetFramebufferSizeCallback(m_window, framebuffer_size_callback);
 
     unsigned int major =
         glfwGetWindowAttrib(m_window, GLFW_CONTEXT_VERSION_MAJOR);
@@ -107,21 +107,7 @@ GLFWwindow *&Window::get_window() {
     return m_window;
 }
 
-void Window::test_render(uint VAO, uint program_id) {
-    while (!glfwWindowShouldClose(m_window)) {
-        glfwPollEvents();
-
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        glUseProgram(program_id);
-
-        glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-        glBindVertexArray(0);
-
-        glUseProgram(0);
-
-        glfwSwapBuffers(m_window);
-    }
+void Window::framebuffer_size_callback(
+    GLFWwindow *window, int width, int height) {
+    glViewport(0, 0, width, height);
 }
