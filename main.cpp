@@ -19,7 +19,9 @@ using namespace verletSolver;
 
 Window g_window;
 GLuint program_id;
-uint   VBO, VAO, EBO;
+GLuint program_id_alt;
+uint   VAO;
+uint   VAO_alt;
 
 bool init();
 void run();
@@ -29,7 +31,9 @@ void add_shader(
     GLuint shader_program, const char *shader_code, GLenum shader_type);
 
 bool create_triangle();
+void create_triangle_alt();
 bool compile_shaders();
+bool compile_shaders_alt();
 void print_shader_log(GLuint shader);
 void process_input(GLFWwindow *window);
 
@@ -39,7 +43,9 @@ int main(int argc, char *args[]) {
     }
 
     create_triangle();
+    create_triangle_alt();
     compile_shaders();
+    compile_shaders_alt();
 
     run();
     quit();
@@ -93,8 +99,9 @@ void run() {
     // }
 
     while (!glfwWindowShouldClose(g_window.get_window())) {
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+        // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         process_input(g_window.get_window());
 
         // set color to use when clear function is called
@@ -103,12 +110,14 @@ void run() {
 
         glUseProgram(program_id);
         glBindVertexArray(VAO);
-        // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-        glBindVertexArray(0);
+        glUseProgram(program_id_alt);
+        glBindVertexArray(VAO_alt);
+        glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
+
         glUseProgram(0);
+        glBindVertexArray(0);
 
         glfwSwapBuffers(g_window.get_window());
         glfwPollEvents();
@@ -129,6 +138,8 @@ void spawn_rect(Solver &physics_simulation, int pos_x, int pos_y) {
 }
 
 bool create_triangle() {
+    uint VBO, EBO;
+
     // triangle vertices in normalized positions
     // (opengl operates from -1.0 to 1.0f)
     GLfloat vertex_data[] = {-0.5f, -0.3f, 0.0f, 0.0f, 0.5f,  0.0f,
@@ -165,10 +176,38 @@ bool create_triangle() {
     glVertexAttribPointer(0, 3, GL_FLOAT, 3 * sizeof(float), 0, (void *)0);
     glEnableVertexAttribArray(0);
 
-    // glBindBuffer(GL_ARRAY_BUFFER, 0);
-    // glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 
     return true;
+}
+
+void create_triangle_alt() {
+    uint VBO, EBO;
+
+    GLfloat vertex_data[] = {-0.5, -0.5f, 0.0f,  0.0f, 0.5f,
+                             0.0f, 0.5f,  -0.5f, 0.0f};
+    GLint   index_data[] = {0, 1, 2};
+
+    glGenVertexArrays(1, &VAO_alt);
+    glBindVertexArray(VAO_alt);
+
+    glGenBuffers(1, &VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(
+        GL_ARRAY_BUFFER, sizeof(vertex_data), vertex_data, GL_STATIC_DRAW);
+
+    glGenBuffers(1, &EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(
+        GL_ELEMENT_ARRAY_BUFFER, sizeof(index_data), index_data,
+        GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, 3 * sizeof(float), 0, (void *)0);
+    glEnableVertexAttribArray(0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 }
 
 void add_shader(
@@ -231,6 +270,43 @@ bool compile_shaders() {
     }
     printf("Finish adding and validating shaders\n");
     return true;
+}
+
+bool compile_shaders_alt() {
+    program_id_alt = glCreateProgram();
+    char          info_log[512];
+    const char   *vertex_shader_source[] = {" \n\
+        #version 330 core \n\
+        layout (location = 0) in vec3 pos; \n\
+        void main()\n\
+        {\n\
+            gl_Position = vec4(pos.x, pos.y, pos.z, 1.0);\n\
+        }\n\
+    "};
+    const GLchar *fragment_shader_source[] = {" \n\
+        #version 330 core \n\
+        out vec4 fragColor; \n\
+        void main()\n {\n fragColor = vec4(0.2f, 0.5f, 0.8f, 1.0f);\n }\n"};
+
+    add_shader(program_id_alt, *vertex_shader_source, GL_VERTEX_SHADER);
+    add_shader(program_id_alt, *fragment_shader_source, GL_FRAGMENT_SHADER);
+
+    glLinkProgram(program_id_alt);
+    GLint program_success = GL_TRUE;
+    glGetProgramiv(program_id_alt, GL_LINK_STATUS, &program_success);
+    if (program_success == GL_FALSE) {
+        glGetProgramInfoLog(program_id_alt, 512, NULL, info_log);
+        printf("Error linking program: %s\n", info_log);
+        return false;
+    }
+
+    glValidateProgram(program_id_alt);
+    glGetProgramiv(program_id, GL_VALIDATE_STATUS, &program_success);
+    if (program_success != GL_TRUE) {
+        glGetProgramInfoLog(program_id, 512, NULL, info_log);
+        printf("Error validating program: %s\n", info_log);
+        return false;
+    }
 }
 
 void process_input(GLFWwindow *window) {
