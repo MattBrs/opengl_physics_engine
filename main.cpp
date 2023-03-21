@@ -5,7 +5,9 @@
 #include "Types.hpp"
 #include "VerletSolver.hpp"
 #include "Window.hpp"
+#include "libs/Shader/Shader.hpp"
 #include <OpenGL/OpenGL.h>
+#include <cmath>
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
@@ -17,11 +19,13 @@
 
 using namespace verletSolver;
 
-Window g_window;
-GLuint program_id;
-GLuint program_id_alt;
-uint   VAO;
-uint   VAO_alt;
+Window         g_window;
+GLuint         program_id;
+GLuint         program_id_alt;
+uint           VAO;
+uint           VAO_alt;
+shader::Shader triangle_shader;
+shader::Shader triangle_shader_alt;
 
 bool init();
 void run();
@@ -32,9 +36,6 @@ void add_shader(
 
 bool create_triangle();
 void create_triangle_alt();
-bool compile_shaders();
-bool compile_shaders_alt();
-void print_shader_log(GLuint shader);
 void process_input(GLFWwindow *window);
 
 int main(int argc, char *args[]) {
@@ -44,8 +45,12 @@ int main(int argc, char *args[]) {
 
     create_triangle();
     create_triangle_alt();
-    compile_shaders();
-    compile_shaders_alt();
+
+    triangle_shader = {
+        "shaders/base_triangle/shader.vs", "shaders/base_triangle/shader.fs"};
+    triangle_shader_alt = {
+        "shaders/base_triangle_alt/shader.vs",
+        "shaders/base_triangle_alt/shader.fs"};
 
     run();
     quit();
@@ -108,11 +113,19 @@ void run() {
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glUseProgram(program_id);
+        // glUseProgram(program_id);
+        triangle_shader.use();
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-        glUseProgram(program_id_alt);
+        // glUseProgram(program_id_alt);
+        triangle_shader_alt.use();
+        float time_value = glfwGetTime();
+        float green_color = cos(time_value) / 3.0f + 0.5f;
+        int   vertex_color_location = glGetUniformLocation(
+            triangle_shader_alt.get_program_id(), "customColor");
+        glUniform4f(vertex_color_location, 0.0f, green_color, 0.0f, 1.0f);
+
         glBindVertexArray(VAO_alt);
         glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
 
@@ -142,8 +155,11 @@ bool create_triangle() {
 
     // triangle vertices in normalized positions
     // (opengl operates from -1.0 to 1.0f)
-    GLfloat vertex_data[] = {-0.5f, -0.3f, 0.0f, 0.0f, 0.5f,  0.0f,
-                             0.0f,  -0.2f, 0.0f, 0.5f, -0.3f, 0.0f};
+    // in this array we are also declaring colors to use on the vertices
+    GLfloat vertex_data[] = {-1.0f, -0.3f, 0.0f, 1.0f, 0.0f, 0.0f,
+                             0.0f,  1.0f,  0.0f, 0.0f, 1.0f, 0.0f,
+                             0.0f,  -0.2f, 0.0f, 0.0f, 0.0f, 0.0f,
+                             1.0f,  -0.3f, 0.0f, 0.0f, 0.0f, 1.0f};
 
     GLuint index_data[] = {0, 1, 2, 1, 2, 3};
 
@@ -173,8 +189,14 @@ bool create_triangle() {
         GL_ELEMENT_ARRAY_BUFFER, sizeof(index_data), index_data,
         GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, 3 * sizeof(float), 0, (void *)0);
+    // index of attrib, type, normalized, offset between values, starting index
+    glVertexAttribPointer(
+        0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(0);
+    glVertexAttribPointer(
+        1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
+        (void *)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
@@ -208,105 +230,6 @@ void create_triangle_alt() {
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
-}
-
-void add_shader(
-    GLuint shader_program, const char *shader_code, GLenum shader_type) {
-
-    // GL_VERTEX_SHADER
-    char   info_log[512];
-    GLuint shader = glCreateShader(shader_type);
-
-    glShaderSource(shader, 1, &shader_code, NULL);
-    glCompileShader(shader);
-
-    GLint v_shader_compiled = GL_TRUE;
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &v_shader_compiled);
-    if (v_shader_compiled != GL_TRUE) {
-        glGetShaderInfoLog(shader, 512, NULL, info_log);
-        printf("Unable to compile shader: %s\n", info_log);
-        return;
-    }
-
-    glAttachShader(shader_program, shader);
-    glDeleteShader(shader);
-}
-
-bool compile_shaders() {
-    program_id = glCreateProgram();
-    char info_log[512];
-
-    const char   *vertex_shader_source[] = {" \n\
-        #version 330 core \n\
-        layout (location = 0) in vec3 pos; \n\
-        void main()\n\
-        {\n\
-            gl_Position = vec4(pos.x, pos.y, pos.z, 1.0);\n\
-        }\n\
-    "};
-    const GLchar *fragment_shader_source[] = {" \n\
-        #version 330 core \n\
-        out vec4 fragColor; \n\
-        void main()\n {\n fragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n }\n"};
-
-    add_shader(program_id, *vertex_shader_source, GL_VERTEX_SHADER);
-    add_shader(program_id, *fragment_shader_source, GL_FRAGMENT_SHADER);
-
-    glLinkProgram(program_id);
-    GLint programm_success = GL_TRUE;
-    glGetProgramiv(program_id, GL_LINK_STATUS, &programm_success);
-    if (programm_success != GL_TRUE) {
-        glGetProgramInfoLog(program_id, 512, NULL, info_log);
-        printf("Error linking program: %s\n", info_log);
-        return false;
-    }
-
-    glValidateProgram(program_id);
-    glGetProgramiv(program_id, GL_VALIDATE_STATUS, &programm_success);
-    if (programm_success != GL_TRUE) {
-        glGetProgramInfoLog(program_id, 512, NULL, info_log);
-        printf("Error validating program: %s\n", info_log);
-        return false;
-    }
-    printf("Finish adding and validating shaders\n");
-    return true;
-}
-
-bool compile_shaders_alt() {
-    program_id_alt = glCreateProgram();
-    char          info_log[512];
-    const char   *vertex_shader_source[] = {" \n\
-        #version 330 core \n\
-        layout (location = 0) in vec3 pos; \n\
-        void main()\n\
-        {\n\
-            gl_Position = vec4(pos.x, pos.y, pos.z, 1.0);\n\
-        }\n\
-    "};
-    const GLchar *fragment_shader_source[] = {" \n\
-        #version 330 core \n\
-        out vec4 fragColor; \n\
-        void main()\n {\n fragColor = vec4(0.2f, 0.5f, 0.8f, 1.0f);\n }\n"};
-
-    add_shader(program_id_alt, *vertex_shader_source, GL_VERTEX_SHADER);
-    add_shader(program_id_alt, *fragment_shader_source, GL_FRAGMENT_SHADER);
-
-    glLinkProgram(program_id_alt);
-    GLint program_success = GL_TRUE;
-    glGetProgramiv(program_id_alt, GL_LINK_STATUS, &program_success);
-    if (program_success == GL_FALSE) {
-        glGetProgramInfoLog(program_id_alt, 512, NULL, info_log);
-        printf("Error linking program: %s\n", info_log);
-        return false;
-    }
-
-    glValidateProgram(program_id_alt);
-    glGetProgramiv(program_id, GL_VALIDATE_STATUS, &program_success);
-    if (program_success != GL_TRUE) {
-        glGetProgramInfoLog(program_id, 512, NULL, info_log);
-        printf("Error validating program: %s\n", info_log);
-        return false;
-    }
 }
 
 void process_input(GLFWwindow *window) {
