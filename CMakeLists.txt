@@ -9,6 +9,7 @@ add_subdirectory(libs/VerletRect)
 add_subdirectory(libs/VerletCircle)
 add_subdirectory(libs/VerletSolver)
 add_subdirectory(libs/Shader)
+add_subdirectory(libs/stb_image)
 
 SET (deps_inc "/opt/homebrew/include/")
 
@@ -39,6 +40,7 @@ target_include_directories(main PRIVATE libs/VerletRect)
 target_include_directories(main PRIVATE libs/VerletCircle)
 target_include_directories(main PRIVATE libs/VerletSolver)
 target_include_directories(main PRIVATE libs/Shader)
+target_link_directories(main PRIVATE libs/stb_image)
 
 target_link_libraries(
     main 
@@ -50,6 +52,7 @@ target_link_libraries(
     VerletRect
     VerletSolver
     Shader
+    Stb_image
 )
 
 target_link_libraries(main "-framework Cocoa")

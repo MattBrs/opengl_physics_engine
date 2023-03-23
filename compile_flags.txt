@@ -9,6 +9,7 @@
 -I./libs/VerletSolver
 -I./libs/VerletRect
 -I./libs/Shader
+-I.libs/stb_image
 -framework OpenGL
 -framework IOKit
 -framework Cocoa

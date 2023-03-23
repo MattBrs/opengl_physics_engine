@@ -1,3 +1,5 @@
+#define STB_IMAGE_IMPLEMENTATION
+
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
@@ -6,6 +8,7 @@
 #include "VerletSolver.hpp"
 #include "Window.hpp"
 #include "libs/Shader/Shader.hpp"
+#include "libs/stb_image/stb_image.hpp"
 #include <OpenGL/OpenGL.h>
 #include <cmath>
 #include <cstddef>
@@ -20,12 +23,13 @@
 using namespace verletSolver;
 
 Window         g_window;
-GLuint         program_id;
-GLuint         program_id_alt;
 uint           VAO;
 uint           VAO_alt;
+uint           VAO_tex;
+uint           g_texture_id;
 shader::Shader triangle_shader;
 shader::Shader triangle_shader_alt;
+shader::Shader triangle_shader_tex;
 
 bool init();
 void run();
@@ -36,7 +40,9 @@ void add_shader(
 
 bool create_triangle();
 void create_triangle_alt();
+void create_triangle_tex();
 void process_input(GLFWwindow *window);
+void create_texture();
 
 int main(int argc, char *args[]) {
     if (!init()) {
@@ -45,12 +51,16 @@ int main(int argc, char *args[]) {
 
     create_triangle();
     create_triangle_alt();
+    create_triangle_tex();
 
     triangle_shader = {
         "shaders/base_triangle/shader.vs", "shaders/base_triangle/shader.fs"};
     triangle_shader_alt = {
         "shaders/base_triangle_alt/shader.vs",
         "shaders/base_triangle_alt/shader.fs"};
+    triangle_shader_tex = {
+        "shaders/base_triangle_tex/shader.vs",
+        "shaders/base_triangle_tex/shader.fs"};
 
     run();
     quit();
@@ -113,32 +123,38 @@ void run() {
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        // glUseProgram(program_id);
+        /*
         triangle_shader.use();
+        float offset = 0.0f;
+        triangle_shader.set_float("xOffset", offset);
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-        // glUseProgram(program_id_alt);
         triangle_shader_alt.use();
         float time_value = glfwGetTime();
-        float green_color = cos(time_value) / 3.0f + 0.5f;
+        float color = cos(time_value) / 3.0f + 0.5f;
         int   vertex_color_location = glGetUniformLocation(
             triangle_shader_alt.get_program_id(), "customColor");
-        glUniform4f(vertex_color_location, 0.0f, green_color, 0.0f, 1.0f);
+        glUniform4f(
+            vertex_color_location, color + 0.5, 1.0f - color, color / 3, 1.0f);
 
         glBindVertexArray(VAO_alt);
         glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
+        */
+
+        // create texture unit to use multiple textures in one shader
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, g_texture_id);
+
+        triangle_shader_tex.use();
+        glBindVertexArray(VAO_tex);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
         glUseProgram(0);
         glBindVertexArray(0);
 
         glfwSwapBuffers(g_window.get_window());
         glfwPollEvents();
-
-        /*
-         * Try to make a couple triangles with different VBOs and then call
-         * bindVertexArray and draw them
-         * */
     }
 }
 
@@ -156,10 +172,10 @@ bool create_triangle() {
     // triangle vertices in normalized positions
     // (opengl operates from -1.0 to 1.0f)
     // in this array we are also declaring colors to use on the vertices
-    GLfloat vertex_data[] = {-1.0f, -0.3f, 0.0f, 1.0f, 0.0f, 0.0f,
+    GLfloat vertex_data[] = {-0.5f, -0.3f, 0.0f, 1.0f, 0.0f, 0.0f,
                              0.0f,  1.0f,  0.0f, 0.0f, 1.0f, 0.0f,
                              0.0f,  -0.2f, 0.0f, 0.0f, 0.0f, 0.0f,
-                             1.0f,  -0.3f, 0.0f, 0.0f, 0.0f, 1.0f};
+                             0.5f,  -0.3f, 0.0f, 0.0f, 0.0f, 1.0f};
 
     GLuint index_data[] = {0, 1, 2, 1, 2, 3};
 
@@ -236,4 +252,97 @@ void process_input(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
     }
+}
+
+void create_texture() {
+    int            width, height, channel_count;
+    unsigned char *data =
+        stbi_load("textures/container.jpg", &width, &height, &channel_count, 0);
+
+    if (!data) {
+        printf("Error while loading texture!\n");
+        return;
+    }
+
+    // gen texture buffers on the GPU
+    glGenTextures(1, &g_texture_id);
+    glBindTexture(GL_TEXTURE_2D, g_texture_id);
+
+    // set texture filtering on x and y axis
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    // set texture filtering for mipmaps
+    glTexParameteri(
+        GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glTexImage2D(
+        GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE,
+        data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    stbi_image_free(data);
+}
+
+void create_triangle_tex() {
+    uint VBO, EBO;
+
+    // triangle vertices in normalized positions
+    // (opengl operates from -1.0 to 1.0f)
+    // in this array we are also declaring colors to use on the vertices
+    GLfloat vertex_data[] = {0.5f,  0.5f,  0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f,
+                             0.5f,  -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,
+                             -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+                             -0.5f, 0.5f,  0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f};
+
+    GLuint index_data[] = {0, 1, 3, 1, 2, 3};
+
+    // The VAO saves all the information about the things we want to draw
+    // so we declare it before all the VBO, etc creation and setting.
+    // Then we unbind it and select it if we want to use it.
+    // (Say we want to have multiple triangles and rectangles, we first make the
+    // VAOs and VBOs, etc and then we select it for drawing).
+    glGenVertexArrays(1, &VAO_tex);
+    glBindVertexArray(VAO_tex);
+
+    // set the Vertex Buffer Objects
+    // (buffer in GPU memory with vertex positions)
+    glGenBuffers(1, &VBO);
+
+    // OpenGL allows different buffers open at the
+    // same time as long taht they are of different types
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+
+    // load the data in the current buffer
+    glBufferData(
+        GL_ARRAY_BUFFER, sizeof(vertex_data), vertex_data, GL_STATIC_DRAW);
+
+    glGenBuffers(1, &EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(
+        GL_ELEMENT_ARRAY_BUFFER, sizeof(index_data), index_data,
+        GL_STATIC_DRAW);
+
+    // index of attrib, type, normalized, offset between values, starting index
+    glVertexAttribPointer(
+        0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(
+        1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
+        (void *)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    glVertexAttribPointer(
+        2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
+        (void *)(6 * sizeof(float)));
+    glEnableVertexAttribArray(2);
+
+    create_texture();
+
+    triangle_shader_tex.use();
+    triangle_shader_tex.set_int("ourTexture", 0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 }
