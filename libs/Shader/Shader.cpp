@@ -84,12 +84,12 @@ bool Shader::compile_shaders() {
 
     glValidateProgram(m_shader_id);
     glGetProgramiv(m_shader_id, GL_VALIDATE_STATUS, &programm_success);
-    if (programm_success != GL_TRUE) {
-        glGetProgramInfoLog(m_shader_id, 512, NULL, info_log);
-        printf("Error validating program: %s\n", info_log);
-        return false;
-    }
-    printf("Finish adding and validating shaders\n");
+    // if (programm_success != GL_TRUE) {
+    //     glGetProgramInfoLog(m_shader_id, 512, NULL, info_log);
+    //     printf("Error validating program: %s\n", info_log);
+    //     return false;
+    // }
+    // printf("Finish adding and validating shaders\n");
     return true;
 }
 

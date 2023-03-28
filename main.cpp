@@ -27,6 +27,7 @@ uint           VAO;
 uint           VAO_alt;
 uint           VAO_tex;
 uint           g_texture_id;
+uint           g_texture_id_2;
 shader::Shader triangle_shader;
 shader::Shader triangle_shader_alt;
 shader::Shader triangle_shader_tex;
@@ -48,11 +49,6 @@ int main(int argc, char *args[]) {
     if (!init()) {
         return 1;
     }
-
-    create_triangle();
-    create_triangle_alt();
-    create_triangle_tex();
-
     triangle_shader = {
         "shaders/base_triangle/shader.vs", "shaders/base_triangle/shader.fs"};
     triangle_shader_alt = {
@@ -61,6 +57,10 @@ int main(int argc, char *args[]) {
     triangle_shader_tex = {
         "shaders/base_triangle_tex/shader.vs",
         "shaders/base_triangle_tex/shader.fs"};
+
+    create_triangle();
+    create_triangle_alt();
+    create_triangle_tex();
 
     run();
     quit();
@@ -145,6 +145,12 @@ void run() {
         // create texture unit to use multiple textures in one shader
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, g_texture_id);
+
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, g_texture_id_2);
+
+        // printf("texture1:  %d   texture2:  %d\n", g_texture_id,
+        // g_texture_id_2);
 
         triangle_shader_tex.use();
         glBindVertexArray(VAO_tex);
@@ -266,6 +272,7 @@ void create_texture() {
 
     // gen texture buffers on the GPU
     glGenTextures(1, &g_texture_id);
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, g_texture_id);
 
     // set texture filtering on x and y axis
@@ -282,6 +289,34 @@ void create_texture() {
         data);
     glGenerateMipmap(GL_TEXTURE_2D);
     stbi_image_free(data);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    /*------------------------------------------*/
+    stbi_set_flip_vertically_on_load(true);
+    data = stbi_load(
+        "textures/awesomeface.png", &width, &height, &channel_count, 0);
+
+    if (!data) {
+        printf("Error while loading awesomeface image\n");
+        return;
+    }
+
+    glGenTextures(1, &g_texture_id_2);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, g_texture_id_2);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(
+        GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(
+        GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+        data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    stbi_image_free(data);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void create_triangle_tex() {
@@ -341,7 +376,8 @@ void create_triangle_tex() {
     create_texture();
 
     triangle_shader_tex.use();
-    triangle_shader_tex.set_int("ourTexture", 0);
+    triangle_shader_tex.set_int("texture1", 0);
+    triangle_shader_tex.set_int("texture2", 1);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
