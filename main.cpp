@@ -1,3 +1,4 @@
+#include <algorithm>
 #define STB_IMAGE_IMPLEMENTATION
 
 #include <GL/glew.h>
@@ -31,6 +32,7 @@ uint           g_texture_id_2;
 shader::Shader triangle_shader;
 shader::Shader triangle_shader_alt;
 shader::Shader triangle_shader_tex;
+float          texture_mix_val = 0.2f;
 
 bool init();
 void run();
@@ -153,6 +155,7 @@ void run() {
         // g_texture_id_2);
 
         triangle_shader_tex.use();
+        triangle_shader_tex.set_float("mixVal", texture_mix_val);
         glBindVertexArray(VAO_tex);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
@@ -257,6 +260,12 @@ void create_triangle_alt() {
 void process_input(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
+    } else if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+        texture_mix_val += 0.01f;
+        texture_mix_val = std::min(texture_mix_val, 1.0f);
+    } else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+        texture_mix_val -= 0.01f;
+        texture_mix_val = std::max(texture_mix_val, 0.0f);
     }
 }
 
@@ -293,7 +302,7 @@ void create_texture() {
     glBindTexture(GL_TEXTURE_2D, 0);
 
     /*------------------------------------------*/
-    stbi_set_flip_vertically_on_load(true);
+    // stbi_set_flip_vertically_on_load(true);
     data = stbi_load(
         "textures/awesomeface.png", &width, &height, &channel_count, 0);
 
