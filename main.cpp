@@ -1,8 +1,10 @@
-#include <algorithm>
 #define STB_IMAGE_IMPLEMENTATION
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include "Constants.hpp"
 #include "Types.hpp"
@@ -11,6 +13,7 @@
 #include "libs/Shader/Shader.hpp"
 #include "libs/stb_image/stb_image.hpp"
 #include <OpenGL/OpenGL.h>
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdio>
@@ -33,6 +36,8 @@ shader::Shader triangle_shader;
 shader::Shader triangle_shader_alt;
 shader::Shader triangle_shader_tex;
 float          texture_mix_val = 0.2f;
+float          texture_translate_x = 0.0f;
+float          texture_translate_y = 0.0f;
 
 bool init();
 void run();
@@ -115,6 +120,17 @@ void run() {
     //     g_window.handle_event(event, g_renderer);
     // }
 
+    // create transformation matrix and apply some rotation and scale
+    //
+
+    glm::vec3 cube_positions[] = {
+        glm::vec3(0.0f, 0.0f, 0.0f),    glm::vec3(2.0f, 5.0f, -15.0f),
+        glm::vec3(-1.5f, -2.2f, -2.5f), glm::vec3(-3.8f, -2.0f, -12.3f),
+        glm::vec3(2.4f, -0.4f, -3.5f),  glm::vec3(-1.7f, 3.0f, -7.5f),
+        glm::vec3(1.3f, -2.0f, -2.5f),  glm::vec3(1.5f, 2.0f, -2.5f),
+        glm::vec3(1.5f, 0.2f, -1.5f),   glm::vec3(-1.3f, 1.0f, -1.5f)};
+
+    glEnable(GL_DEPTH_TEST);
     while (!glfwWindowShouldClose(g_window.get_window())) {
 
         // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -123,7 +139,7 @@ void run() {
 
         // set color to use when clear function is called
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         /*
         triangle_shader.use();
@@ -153,10 +169,79 @@ void run() {
 
         // printf("texture1:  %d   texture2:  %d\n", g_texture_id,
         // g_texture_id_2);
+        glm::mat4 trans = glm::mat4(1.0f);
+        // trans = glm::rotate(
+        //     trans, glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        trans = glm::translate(
+            trans, glm::vec3(texture_translate_x, texture_translate_y, 0.0f));
+        trans = glm::rotate(
+            trans, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 1.0f));
+        trans = glm::scale(trans, glm::vec3(0.5f, 0.5f, 0.5f));
 
         triangle_shader_tex.use();
         triangle_shader_tex.set_float("mixVal", texture_mix_val);
+
+        // glm::mat4 model = glm::mat4(1.0f);
+        // model = glm::rotate(
+        //     model, glm::radians(-55.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+        //
+        //
+        // model = glm::rotate(
+        //     model, (float)glfwGetTime() * glm::radians(50.0f),
+        //     glm::vec3(0.5f, 1.0f, 0.5f));
+        //
+        //
+        // model = glm::rotate(model, sin((float)glfwGetTime()) *
+        // glm::radians(55.0f), glm::vec3(1.0f, 1.0f, 1.0f));
+
+        glm::mat4 view = glm::mat4(1.0f);
+        view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
+
+        glm::mat4 projection = glm::mat4(1.0f);
+        projection = glm::perspective(
+            glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
+
+        uint model_location =
+            glGetUniformLocation(triangle_shader_tex.get_program_id(), "model");
+        uint view_location =
+            glGetUniformLocation(triangle_shader_tex.get_program_id(), "view");
+        uint projection_location = glGetUniformLocation(
+            triangle_shader_tex.get_program_id(), "projection");
+
+        // glUniformMatrix4fv(model_location, 1, GL_FALSE, glm::value_ptr(model));
+        glUniformMatrix4fv(view_location, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(
+            projection_location, 1, GL_FALSE, glm::value_ptr(projection));
+
+        uint transform_location = glGetUniformLocation(
+            triangle_shader_tex.get_program_id(), "transform");
+
+        glUniformMatrix4fv(
+            transform_location, 1, GL_FALSE, glm::value_ptr(trans));
         glBindVertexArray(VAO_tex);
+        // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        // glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        for (int i = 0; i < 10; ++i) {
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, cube_positions[i]);
+            float angle = 20.0f * i+15;
+            model = glm::rotate(
+                model, (float)glfwGetTime() * glm::radians(angle),
+                glm::vec3(0.5f, 1.0f, 0.0f));
+
+            glUniformMatrix4fv(
+                model_location, 1, GL_FALSE, glm::value_ptr(model));
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        }
+
+        glm::mat4 trans_2 = glm::mat4(1.0f);
+        trans_2 = glm::translate(
+            trans_2,
+            glm::vec3(-texture_translate_x, -texture_translate_y, 0.0f));
+        trans_2 = glm::scale(trans_2, glm::vec3(0.5f, 0.5f, 0.5f));
+        glUniformMatrix4fv(
+            transform_location, 1, GL_FALSE, glm::value_ptr(trans_2));
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
         glUseProgram(0);
@@ -267,6 +352,18 @@ void process_input(GLFWwindow *window) {
         texture_mix_val -= 0.01f;
         texture_mix_val = std::max(texture_mix_val, 0.0f);
     }
+
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+        texture_translate_x += 0.01f;
+    } else if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+        texture_translate_x -= 0.01f;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+        texture_translate_y += 0.01f;
+    } else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+        texture_translate_y -= 0.01f;
+    }
 }
 
 void create_texture() {
@@ -334,11 +431,36 @@ void create_triangle_tex() {
     // triangle vertices in normalized positions
     // (opengl operates from -1.0 to 1.0f)
     // in this array we are also declaring colors to use on the vertices
-    GLfloat vertex_data[] = {0.5f,  0.5f,  0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f,
-                             0.5f,  -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,
-                             -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-                             -0.5f, 0.5f,  0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f};
+    // GLfloat vertex_data[] = {0.5f,  0.5f,  0.0f, 1.0f, 0.0f,
+    // 0.0f, 1.0f, 1.0f,
+    //                          0.5f,  -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f,
+    //                          0.0f, -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f,
+    //                          0.0f, 0.0f, -0.5f, 0.5f,  0.0f, 1.0f, 1.0f,
+    //                          0.0f, 0.0f, 1.0f};
+    GLfloat vertex_data[] = {
+        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, 0.5f,  -0.5f, -0.5f, 1.0f, 0.0f,
+        0.5f,  0.5f,  -0.5f, 1.0f, 1.0f, 0.5f,  0.5f,  -0.5f, 1.0f, 1.0f,
+        -0.5f, 0.5f,  -0.5f, 0.0f, 1.0f, -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
 
+        -0.5f, -0.5f, 0.5f,  0.0f, 0.0f, 0.5f,  -0.5f, 0.5f,  1.0f, 0.0f,
+        0.5f,  0.5f,  0.5f,  1.0f, 1.0f, 0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+        -0.5f, 0.5f,  0.5f,  0.0f, 1.0f, -0.5f, -0.5f, 0.5f,  0.0f, 0.0f,
+
+        -0.5f, 0.5f,  0.5f,  1.0f, 0.0f, -0.5f, 0.5f,  -0.5f, 1.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
+        -0.5f, -0.5f, 0.5f,  0.0f, 0.0f, -0.5f, 0.5f,  0.5f,  1.0f, 0.0f,
+
+        0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 0.5f,  0.5f,  -0.5f, 1.0f, 1.0f,
+        0.5f,  -0.5f, -0.5f, 0.0f, 1.0f, 0.5f,  -0.5f, -0.5f, 0.0f, 1.0f,
+        0.5f,  -0.5f, 0.5f,  0.0f, 0.0f, 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+        -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 0.5f,  -0.5f, -0.5f, 1.0f, 1.0f,
+        0.5f,  -0.5f, 0.5f,  1.0f, 0.0f, 0.5f,  -0.5f, 0.5f,  1.0f, 0.0f,
+        -0.5f, -0.5f, 0.5f,  0.0f, 0.0f, -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
+
+        -0.5f, 0.5f,  -0.5f, 0.0f, 1.0f, 0.5f,  0.5f,  -0.5f, 1.0f, 1.0f,
+        0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f, 0.5f,  0.5f,  0.0f, 0.0f, -0.5f, 0.5f,  -0.5f, 0.0f, 1.0f};
     GLuint index_data[] = {0, 1, 3, 1, 2, 3};
 
     // The VAO saves all the information about the things we want to draw
@@ -369,18 +491,18 @@ void create_triangle_tex() {
 
     // index of attrib, type, normalized, offset between values, starting index
     glVertexAttribPointer(
-        0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)0);
+        0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(0);
 
-    glVertexAttribPointer(
-        1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
-        (void *)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
+    // glVertexAttribPointer(
+    //     1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
+    //     (void *)(3 * sizeof(float)));
+    // glEnableVertexAttribArray(1);
 
     glVertexAttribPointer(
-        2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
-        (void *)(6 * sizeof(float)));
-    glEnableVertexAttribArray(2);
+        1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float),
+        (void *)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
 
     create_texture();
 
