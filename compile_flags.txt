@@ -10,6 +10,7 @@
 -I./libs/VerletRect
 -I./libs/Shader
 -I.libs/stb_image
+-I.libs/Shapes
 -framework OpenGL
 -framework IOKit
 -framework Cocoa
