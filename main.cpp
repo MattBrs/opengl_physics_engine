@@ -34,6 +34,7 @@ uint   g_texture_id_2;
 float  texture_mix_val = 0.2f;
 float  texture_translate_x = 0.0f;
 float  texture_translate_y = 0.0f;
+int    circle_num_points = 30;
 
 shader::Shader triangle_shader_tex;
 shader::Shader circle_shader;
@@ -133,7 +134,28 @@ void run() {
 
         circle_shader.use();
         glBindVertexArray(circle_VAO);
-        glDrawArrays(GL_TRIANGLE_FAN, 0, 30);
+
+        std::pair<int, int> window_size = g_window.get_window_size();
+        float aspect = (float)window_size.first / window_size.second;
+
+        // set matrix to scale object in world coordinates
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::scale(model, glm::vec3(0.5f, 0.5f, 1.0f));
+
+        // set matrix for object translation
+        glm::mat4 view = glm::mat4(1.0f);
+        view = glm::translate(view, glm::vec3(0.f, 0.f, 0.f));
+
+        // set projection matrix to preserve aspect ratio after window size
+        // changes
+        glm::mat4 projection = glm::mat4(1.0f);
+        projection = glm::ortho(-aspect, aspect, -1.0f, 1.0f);
+
+        circle_shader.set_mat4f("model", model);
+        circle_shader.set_mat4f("view", view);
+        circle_shader.set_mat4f("projection", projection);
+
+        glDrawArrays(GL_TRIANGLE_FAN, 0, circle_num_points);
 
         glUseProgram(0);
         glBindVertexArray(0);
@@ -145,7 +167,7 @@ void run() {
 
 void create_circle() {
     uint    VBO;
-    int     num_points = 30;
+    int     num_points = circle_num_points;
     GLfloat vertex_data[6 * num_points];
     uint    current_index = 0;
     int     theta = 0;
@@ -155,12 +177,10 @@ void create_circle() {
         GLfloat x = (GLfloat)radius * cosf(theta * M_PI / 180.0f);
         GLfloat y = (GLfloat)radius * sinf(theta * M_PI / 180.0f);
 
-        // printf("x: %f  y: %f \n\n", x, y);
-
         vertex_data[current_index++] = x;
         vertex_data[current_index++] = y;
 
-        vertex_data[current_index++] = 0.0f;
+        vertex_data[current_index++] = 0.5f;
 
         float color_x = 1.0f;
         float color_y = 0.0f;

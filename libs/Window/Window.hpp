@@ -2,6 +2,7 @@
 
 #include <GLFW/glfw3.h>
 #include <sys/types.h>
+#include <utility>
 
 class Window {
   public:
@@ -11,21 +12,19 @@ class Window {
     bool init();
     void free();
 
-    int get_window_width();
-    int get_window_heigth();
-
-    bool         has_mouse_focus();
-    bool         has_keyboard_focus();
-    bool         is_minimized();
-    GLFWwindow *&get_window();
+    bool                has_mouse_focus();
+    bool                has_keyboard_focus();
+    bool                is_minimized();
+    GLFWwindow        *&get_window();
+    std::pair<int, int> get_window_size();
 
   private:
+    int m_buffer_width;
+    int m_buffer_heigth;
     int m_window_heigth;
     int m_window_width;
 
     GLFWwindow *m_window;
-    int         m_buffer_width;
-    int         m_buffer_heigth;
 
     bool   m_mouse_focus;
     bool   m_keyboard_focus;
@@ -36,4 +35,5 @@ class Window {
 
     static void
     framebuffer_size_callback(GLFWwindow *window, int width, int height);
+    static void window_size_callback(GLFWwindow *window, int width, int heigth);
 };
