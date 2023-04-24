@@ -12,8 +12,11 @@ class Circle {
 
   public:
     Circle();
+    Circle(glm::vec3 position, float radius);
     ~Circle();
     glm::vec3 *get_position();
     float      get_radius();
+
+    void set_position(glm::vec3 new_pos);
 };
 } // namespace circle

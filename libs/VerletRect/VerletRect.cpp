@@ -32,15 +32,3 @@ VerletRect::VerletRect(
 VerletRect::~VerletRect() {
     // do nothing
 }
-
-void VerletRect::render(int *renderer) {
-    /*
-    m_rect.x = m_current_position.x;
-    m_rect.y = m_current_position.y;
-    m_collider.pos_x = (float)(m_rect.x + m_rect.w) / 2;
-    m_collider.pos_y = (float)(m_rect.y + m_rect.h) / 2;
-    m_box_collider = m_rect;
-    */
-
-    // SDL_RenderFillRect(renderer, &m_rect);
-}

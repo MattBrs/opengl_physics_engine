@@ -1,3 +1,6 @@
+#include "VerletCircle.hpp"
+#include "libs/Shapes/Shapes.hpp"
+#include <utility>
 #define STB_IMAGE_IMPLEMENTATION
 
 #include <GL/glew.h>
@@ -31,10 +34,8 @@ uint   VAO_tex;
 uint   circle_VAO;
 uint   g_texture_id;
 uint   g_texture_id_2;
-float  texture_mix_val = 0.2f;
-float  texture_translate_x = 0.0f;
-float  texture_translate_y = 0.0f;
 int    circle_num_points = 30;
+bool   sim_running = false;
 
 shader::Shader triangle_shader_tex;
 shader::Shader circle_shader;
@@ -81,18 +82,9 @@ void quit() {
 }
 
 void run() {
-    bool            quit = false;
-    Solver          physics_simulation;
-    Vector2<double> rect_position(
-        ((float)constants::WINDOW_WIDTH - 100) / 2, 0);
+    bool   quit = false;
+    Solver physics_simulation;
 
-    Vector2<double> rect_size(100, 100);
-
-    physics_simulation.add_rect(rect_position, rect_size);
-
-    rect_position = {(((float)constants::WINDOW_WIDTH - 100) / 2) + 50, 150};
-
-    physics_simulation.add_rect(rect_position, rect_size);
     bool simulation_running = false;
 
     // while (SDL_PollEvent(&event) != 0) {
@@ -111,25 +103,23 @@ void run() {
     //     g_window.handle_event(event, g_renderer);
     // }
 
-    // create transformation matrix and apply some rotation and scale
-    //
-
-    glm::vec3 cube_positions[] = {
-        glm::vec3(0.0f, 0.0f, 0.0f),    glm::vec3(2.0f, 5.0f, -15.0f),
-        glm::vec3(-1.5f, -2.2f, -2.5f), glm::vec3(-3.8f, -2.0f, -12.3f),
-        glm::vec3(2.4f, -0.4f, -3.5f),  glm::vec3(-1.7f, 3.0f, -7.5f),
-        glm::vec3(1.3f, -2.0f, -2.5f),  glm::vec3(1.5f, 2.0f, -2.5f),
-        glm::vec3(1.5f, 0.2f, -1.5f),   glm::vec3(-1.3f, 1.0f, -1.5f)};
+    physics_simulation.add_circle({480.f, 360.f}, 20.f);
+    physics_simulation.add_circle({480.f, 180.f}, 20.f);
 
     glEnable(GL_DEPTH_TEST);
+
+    double old_time = 0.f;
     while (!glfwWindowShouldClose(g_window.get_window())) {
+        double time = glfwGetTime();
+        double delta_time = time - old_time;
+        old_time = time;
 
         // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         process_input(g_window.get_window());
 
         // set color to use when clear function is called
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         circle_shader.use();
@@ -138,30 +128,76 @@ void run() {
         std::pair<int, int> window_size = g_window.get_window_size();
         float aspect = (float)window_size.first / window_size.second;
 
-        // set matrix to scale object in world coordinates
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::scale(model, glm::vec3(0.5f, 0.5f, 1.0f));
+        // for (int i = 0; i < circles.size(); ++i) {
+        //     float circle_radius = circles[i].get_radius();
 
-        // set matrix for object translation
-        glm::mat4 view = glm::mat4(1.0f);
-        view = glm::translate(view, glm::vec3(0.f, 0.f, 0.f));
+        //     // set matrix to scale object in world coordinates
+        //     glm::mat4 model = glm::mat4(1.0f);
+        //     model = glm::translate(model, *circles[i].get_position());
+        //     model = glm::scale(
+        //         model,
+        //         glm::vec3(circle_radius / 10.f, circle_radius / 10.f, 1.0f));
 
-        // set projection matrix to preserve aspect ratio after window size
-        // changes
-        glm::mat4 projection = glm::mat4(1.0f);
-        projection = glm::ortho(-aspect, aspect, -1.0f, 1.0f);
+        //     // set matrix for object translation
+        //     glm::mat4 view = glm::mat4(1.0f);
+        //     view = glm::translate(view, glm::vec3(0.f, 0.f, 0.f));
 
-        circle_shader.set_mat4f("model", model);
-        circle_shader.set_mat4f("view", view);
-        circle_shader.set_mat4f("projection", projection);
+        //     // set projection matrix to preserve aspect ratio after window
+        //     size
+        //     // changes
+        //     glm::mat4 projection = glm::mat4(1.0f);
+        //     projection = glm::ortho(-aspect, aspect, -1.0f, 1.0f);
 
-        glDrawArrays(GL_TRIANGLE_FAN, 0, circle_num_points);
+        //     circle_shader.set_mat4f("model", model);
+        //     circle_shader.set_mat4f("view", view);
+        //     circle_shader.set_mat4f("projection", projection);
 
+        //     glDrawArrays(GL_TRIANGLE_FAN, 0, circle_num_points);
+        // }
+        std::vector<verletCircle::VerletCircle *> verlet_circles =
+            physics_simulation.get_circles();
+        for (int i = 0; i < verlet_circles.size(); ++i) {
+
+            // set matrix to scale object in world coordinates
+            glm::mat4 model = glm::mat4(1.0f);
+
+            glm::vec3 position = glm::vec3(
+                verlet_circles[i]->m_current_position.x,
+                verlet_circles[i]->m_current_position.y, 0.0f);
+
+            position.x = -1.0f + 2.0f * (position.x / constants::WINDOW_WIDTH);
+            position.y = 1.0f - 2.0f * (position.y / constants::WINDOW_HEIGHT);
+
+            model = glm::translate(model, position);
+            model = glm::scale(
+                model, glm::vec3(
+                           verlet_circles[i]->get_radius() / 500.f,
+                           verlet_circles[i]->get_radius() / 500.f, 1.0f));
+
+            // set matrix for object translation
+            glm::mat4 view = glm::mat4(1.0f);
+            view = glm::translate(view, glm::vec3(0.f, 0.f, 0.f));
+
+            // set projection matrix to preserve aspect ratio after window size
+            // changes
+            glm::mat4 projection = glm::mat4(1.0f);
+            projection = glm::ortho(-aspect, aspect, -1.f, 1.f);
+
+            circle_shader.set_mat4f("model", model);
+            circle_shader.set_mat4f("view", view);
+            circle_shader.set_mat4f("projection", projection);
+
+            glDrawArrays(GL_TRIANGLE_FAN, 0, circle_num_points);
+        }
         glUseProgram(0);
         glBindVertexArray(0);
 
         glfwSwapBuffers(g_window.get_window());
         glfwPollEvents();
+        if (sim_running) {
+
+            physics_simulation.update(delta_time);
+        }
     }
 }
 
@@ -171,7 +207,7 @@ void create_circle() {
     GLfloat vertex_data[6 * num_points];
     uint    current_index = 0;
     int     theta = 0;
-    float   radius = 0.5f;
+    float   radius = 1.f;
 
     while (theta < 360) {
         GLfloat x = (GLfloat)radius * cosf(theta * M_PI / 180.0f);
@@ -182,13 +218,9 @@ void create_circle() {
 
         vertex_data[current_index++] = 0.5f;
 
-        float color_x = 1.0f;
-        float color_y = 0.0f;
-        float color_z = 0.0f;
-
-        vertex_data[current_index++] = color_x;
-        vertex_data[current_index++] = color_y;
-        vertex_data[current_index++] = color_z;
+        vertex_data[current_index++] = 1.0f;
+        vertex_data[current_index++] = 1.0f;
+        vertex_data[current_index++] = 1.0f;
 
         theta += 360 / num_points;
     }
@@ -213,35 +245,15 @@ void create_circle() {
     glBindVertexArray(0);
 }
 
-void spawn_rect(Solver &physics_simulation, int pos_x, int pos_y) {
-    Vector2<double> rect_position(pos_x, pos_y);
-    int             size = 30 + (rand() % 100);
-    Vector2<double> rect_size(size, size);
-
-    physics_simulation.add_rect(rect_position, rect_size);
-}
-
 void process_input(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
-    } else if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
-        texture_mix_val += 0.01f;
-        texture_mix_val = std::min(texture_mix_val, 1.0f);
-    } else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-        texture_mix_val -= 0.01f;
-        texture_mix_val = std::max(texture_mix_val, 0.0f);
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-        texture_translate_x += 0.01f;
-    } else if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-        texture_translate_x -= 0.01f;
     }
 
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-        texture_translate_y += 0.01f;
+        sim_running = true;
     } else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-        texture_translate_y -= 0.01f;
+        sim_running = false;
     }
 }
 
@@ -305,17 +317,8 @@ void create_texture() {
 }
 
 void create_triangle_tex() {
-    uint VBO, EBO;
+    uint VBO;
 
-    // triangle vertices in normalized positions
-    // (opengl operates from -1.0 to 1.0f)
-    // in this array we are also declaring colors to use on the vertices
-    // GLfloat vertex_data[] = {0.5f,  0.5f,  0.0f, 1.0f, 0.0f,
-    // 0.0f, 1.0f, 1.0f,
-    //                          0.5f,  -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f,
-    //                          0.0f, -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f,
-    //                          0.0f, 0.0f, -0.5f, 0.5f,  0.0f, 1.0f, 1.0f,
-    //                          0.0f, 0.0f, 1.0f};
     GLfloat vertex_data[] = {
         -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, 0.5f,  -0.5f, -0.5f, 1.0f, 0.0f,
         0.5f,  0.5f,  -0.5f, 1.0f, 1.0f, 0.5f,  0.5f,  -0.5f, 1.0f, 1.0f,
@@ -340,7 +343,6 @@ void create_triangle_tex() {
         -0.5f, 0.5f,  -0.5f, 0.0f, 1.0f, 0.5f,  0.5f,  -0.5f, 1.0f, 1.0f,
         0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
         -0.5f, 0.5f,  0.5f,  0.0f, 0.0f, -0.5f, 0.5f,  -0.5f, 0.0f, 1.0f};
-    GLuint index_data[] = {0, 1, 3, 1, 2, 3};
 
     // The VAO saves all the information about the things we want to draw
     // so we declare it before all the VBO, etc creation and setting.
@@ -362,21 +364,10 @@ void create_triangle_tex() {
     glBufferData(
         GL_ARRAY_BUFFER, sizeof(vertex_data), vertex_data, GL_STATIC_DRAW);
 
-    // glGenBuffers(1, &EBO);
-    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    // glBufferData(
-    //     GL_ELEMENT_ARRAY_BUFFER, sizeof(index_data), index_data,
-    //     GL_STATIC_DRAW);
-
     // index of attrib, type, normalized, offset between values, starting index
     glVertexAttribPointer(
         0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(0);
-
-    // glVertexAttribPointer(
-    //     1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
-    //     (void *)(3 * sizeof(float)));
-    // glEnableVertexAttribArray(1);
 
     glVertexAttribPointer(
         1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float),

@@ -1,3 +1,5 @@
 add_library(VerletObject VerletObject.cpp)
 target_include_directories(VerletObject PUBLIC "../Utils/")
 target_include_directories(VerletObject PUBLIC "../Types/")
+target_include_directories(VerletObject PUBLIC "../Shapes/")
+target_include_directories(VerletObject PUBLIC "../Constants/")

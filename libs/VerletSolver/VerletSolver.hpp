@@ -1,35 +1,34 @@
 #pragma once
 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+#include "Shapes.hpp"
 #include "Types.hpp"
+#include "VerletCircle.hpp"
 #include "VerletObject.hpp"
 #include <vector>
 
-using types::Vector2;
-
 namespace verletSolver {
-	class Solver {
-	public:
-		~Solver();
+class Solver {
+  public:
+    ~Solver();
 
-		void update(double delta_time);
-		bool add_rect(
-			const Vector2<double> &position, 
-			const Vector2<double> &size
-		);
-		void render(int* renderer);
-		void handle_collisions();
-		Vector2<double> calc_closest_point(
-			const verletObject::VerletObject &obj_1,
-			const verletObject::VerletObject &obj_2
-		);
+    void update(double delta_time);
+    void handle_collisions();
+    void add_circle(types::Vector2<double> position, float radius);
 
-	private:
-		std::vector<verletObject::VerletObject*> m_objects;
-		types::Vector2<double> m_gravity {0.0f, 1000.0f};
-		Vector2<double> m_friction {500.0f, 0.0f};
+    std::vector<verletCircle::VerletCircle *> &get_circles();
 
-		void update_position(double delta_time);
-		void apply_gravity();
-		void apply_constraint();
-	};
-}
+  private:
+    // std::vector<verletObject::VerletObject *> m_objects;
+    types::Vector2<double>                    m_gravity{0.0f, 100.0f};
+    types::Vector2<double>                    m_friction{500.0f, 0.0f};
+    std::vector<verletCircle::VerletCircle *> m_circles;
+
+    void update_position(double delta_time);
+    void apply_gravity();
+    void apply_constraint();
+};
+} // namespace verletSolver
