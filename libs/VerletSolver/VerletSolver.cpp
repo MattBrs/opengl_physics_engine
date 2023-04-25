@@ -29,7 +29,7 @@ void Solver::apply_gravity() {
 }
 
 void Solver::update(double delta_time) {
-    const int    sub_steps = 1;
+    const int    sub_steps = 8;
     const double sub_delta_time = delta_time / sub_steps;
 
     for (int i = 0; i < sub_steps; ++i) {
@@ -72,53 +72,36 @@ void Solver::apply_constraint() {
 
 void Solver::handle_collisions() {
 
-    const double response_coeff = 0.75f;
+    const float response_coeff = 0.75f;
 
     for (int i = 0; i < m_circles.size(); ++i) {
-        verletCircle::VerletCircle *obj_1 = m_circles[i];
+        verletCircle::VerletCircle &obj_1 = *m_circles[i];
 
         for (int j = i + 1; j < m_circles.size(); ++j) {
-            verletCircle::VerletCircle *obj_2 = m_circles[j];
+            verletCircle::VerletCircle &obj_2 = *m_circles[j];
 
             Vector2<double> v =
-                obj_1->m_current_position - obj_2->m_current_position;
-            const double distance = sqrt(v.x * v.x + v.y * v.y);
-            const double min_distance =
-                (obj_1->get_radius() + obj_2->get_radius());
+                obj_1.m_current_position - obj_2.m_current_position;
+            const float distance = v.x * v.x + v.y * v.y;
+            const float min_distance = obj_1.get_radius() + obj_2.get_radius();
 
-            // printf("distance: %f\n", distance);
-            // printf("min_distance: %f\n", min_distance);
-
-            if (distance <= min_distance) {
-                printf("collision detected\n");
-                const double    new_distance = sqrt(distance);
+            if (distance <= min_distance * min_distance) {
+                const float     new_distance = sqrt(distance);
                 Vector2<double> n = v / new_distance;
 
-                const double mass_ratio_1 =
-                    obj_1->get_radius() /
-                    (obj_1->get_radius() + obj_2->get_radius());
+                const float mass_ratio_1 =
+                    obj_1.get_radius() /
+                    (obj_1.get_radius() + obj_2.get_radius());
 
-                const double mass_ratio_2 =
-                    obj_2->get_radius() /
-                    (obj_2->get_radius() + obj_1->get_radius());
+                const float mass_ratio_2 =
+                    obj_2.get_radius() /
+                    (obj_1.get_radius() + obj_2.get_radius());
 
-                const double delta =
+                const float delta =
                     response_coeff * 0.5f * (new_distance - min_distance);
 
-                printf(
-                    "old_pos 1:  %f  %f\n", obj_1->m_current_position.x,
-                    obj_1->m_current_position.y);
-                printf(
-                    "old_pos 2:  %f  %f\n", obj_2->m_current_position.x,
-                    obj_2->m_current_position.y);
-                obj_1->m_current_position -= n * (1.0f * delta);
-                obj_2->m_current_position += n * (1.0f * delta);
-                printf(
-                    "new_pos 1:  %f  %f\n", obj_1->m_current_position.x,
-                    obj_1->m_current_position.y);
-                printf(
-                    "new_pos 2:  %f  %f\n", obj_2->m_current_position.x,
-                    obj_2->m_current_position.y);
+                obj_1.m_current_position -= n * (mass_ratio_2 * delta);
+                obj_2.m_current_position += n * (mass_ratio_1 * delta);
             }
         }
     }

@@ -27,11 +27,12 @@ include_directories(
 find_package(GLEW REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(OpenGL REQUIRED)
+find_package(glm REQUIRED)
 
 add_executable(main ${PROJECT_SOURCE_DIR}/main.cpp)
 
 link_libraries(main PRIVATE "/opt/homebrew/lib/")
-target_link_libraries(main glfw OpenGL::GL GLEW::GLEW)
+target_link_libraries(main glfw OpenGL::GL GLEW::GLEW glm::glm)
 
 target_include_directories(main PRIVATE libs/Constants)
 target_include_directories(main PRIVATE libs/Utils)

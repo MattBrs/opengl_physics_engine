@@ -34,8 +34,9 @@ uint   VAO_tex;
 uint   circle_VAO;
 uint   g_texture_id;
 uint   g_texture_id_2;
-int    circle_num_points = 30;
-bool   sim_running = false;
+int    g_circle_num_points = 30;
+bool   g_sim_running = false;
+Solver g_physics_simulation;
 
 shader::Shader triangle_shader_tex;
 shader::Shader circle_shader;
@@ -43,11 +44,13 @@ shader::Shader circle_shader;
 bool init();
 void run();
 void quit();
-void spawn_rect(Solver &physics_simulation, int pos_x, int pos_y);
+void spawn_circle(double pos_x, double pos_y);
 void create_triangle_tex();
 void create_circle();
 void process_input(GLFWwindow *window);
 void create_texture();
+void mouse_button_callback(
+    GLFWwindow *window, int button, int action, int mods);
 
 int main(int argc, char *args[]) {
     if (!init()) {
@@ -72,6 +75,8 @@ bool init() {
         return false;
     }
 
+    glfwSetMouseButtonCallback(g_window.get_window(), mouse_button_callback);
+
     return true;
 }
 
@@ -82,8 +87,7 @@ void quit() {
 }
 
 void run() {
-    bool   quit = false;
-    Solver physics_simulation;
+    bool quit = false;
 
     bool simulation_running = false;
 
@@ -103,8 +107,8 @@ void run() {
     //     g_window.handle_event(event, g_renderer);
     // }
 
-    physics_simulation.add_circle({480.f, 360.f}, 20.f);
-    physics_simulation.add_circle({480.f, 180.f}, 20.f);
+    g_physics_simulation.add_circle({480.f, 360.f}, 20.f);
+    g_physics_simulation.add_circle({482.f, 180.f}, 20.f);
 
     glEnable(GL_DEPTH_TEST);
 
@@ -155,7 +159,7 @@ void run() {
         //     glDrawArrays(GL_TRIANGLE_FAN, 0, circle_num_points);
         // }
         std::vector<verletCircle::VerletCircle *> verlet_circles =
-            physics_simulation.get_circles();
+            g_physics_simulation.get_circles();
         for (int i = 0; i < verlet_circles.size(); ++i) {
 
             // set matrix to scale object in world coordinates
@@ -181,29 +185,29 @@ void run() {
             // set projection matrix to preserve aspect ratio after window size
             // changes
             glm::mat4 projection = glm::mat4(1.0f);
-            projection = glm::ortho(-aspect, aspect, -1.f, 1.f);
+            // projection = glm::ortho(-aspect, aspect, -1.f, 1.f);
 
             circle_shader.set_mat4f("model", model);
             circle_shader.set_mat4f("view", view);
             circle_shader.set_mat4f("projection", projection);
 
-            glDrawArrays(GL_TRIANGLE_FAN, 0, circle_num_points);
+            glDrawArrays(GL_TRIANGLE_FAN, 0, g_circle_num_points);
         }
         glUseProgram(0);
         glBindVertexArray(0);
 
         glfwSwapBuffers(g_window.get_window());
         glfwPollEvents();
-        if (sim_running) {
+        if (g_sim_running) {
 
-            physics_simulation.update(delta_time);
+            g_physics_simulation.update(delta_time);
         }
     }
 }
 
 void create_circle() {
     uint    VBO;
-    int     num_points = circle_num_points;
+    int     num_points = g_circle_num_points;
     GLfloat vertex_data[6 * num_points];
     uint    current_index = 0;
     int     theta = 0;
@@ -251,9 +255,13 @@ void process_input(GLFWwindow *window) {
     }
 
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-        sim_running = true;
+        g_sim_running = true;
     } else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-        sim_running = false;
+        g_sim_running = false;
+    }
+
+    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
+        printf("");
     }
 }
 
@@ -382,4 +390,20 @@ void create_triangle_tex() {
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
+}
+
+void spawn_circle(double pos_x, double pos_y) {
+    for (int i = 0; i < 10; ++i) {
+        g_physics_simulation.add_circle({pos_x - i * 5, pos_y - i * 5}, 20.f);
+    }
+}
+
+void mouse_button_callback(
+    GLFWwindow *window, int button, int action, int mods) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        double pos_x, pos_y;
+
+        glfwGetCursorPos(g_window.get_window(), &pos_x, &pos_y);
+        spawn_circle(pos_x, pos_y);
+    }
 }

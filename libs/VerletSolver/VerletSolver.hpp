@@ -23,7 +23,7 @@ class Solver {
 
   private:
     // std::vector<verletObject::VerletObject *> m_objects;
-    types::Vector2<double>                    m_gravity{0.0f, 100.0f};
+    types::Vector2<double>                    m_gravity{0.0f, 1000.0f};
     types::Vector2<double>                    m_friction{500.0f, 0.0f};
     std::vector<verletCircle::VerletCircle *> m_circles;
 
