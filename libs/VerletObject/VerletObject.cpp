@@ -21,9 +21,6 @@ void VerletObject::update_position(double delta_time) {
     velocity.y = velocity.y > 100 ? 100 : velocity.y;
     m_old_position = m_current_position;
 
-    printf("velocity: %f  %f\n", velocity.x, velocity.y);
-    printf("velocity: %f  %f\n\n", m_acceleration.x, m_acceleration.y);
-
     m_current_position = m_current_position + velocity +
                          m_acceleration * delta_time * delta_time;
 

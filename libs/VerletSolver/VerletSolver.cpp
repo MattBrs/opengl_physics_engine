@@ -48,23 +48,20 @@ void Solver::update_position(double delta_time) {
 
 void Solver::apply_constraint() {
     for (auto &object : m_circles) {
-        if (object->m_current_position.y >
-            constants::WINDOW_HEIGHT - object->get_radius()) {
-            object->m_current_position.y =
-                (constants::WINDOW_HEIGHT - object->get_radius());
+        if (object->m_current_position.y > 1.0f - object->get_radius()) {
+            object->m_current_position.y = 1.0f - object->get_radius();
             object->m_old_position.y = object->m_current_position.y;
-        } else if (object->m_current_position.y < 0.0f) {
-            object->m_current_position.y = 0.0f;
+        } else if (
+            object->m_current_position.y < -1.0f + object->get_radius()) {
+            object->m_current_position.y = -1.0f + object->get_radius();
             object->m_old_position.y = object->m_current_position.y;
         }
 
-        if (object->m_current_position.x >
-            constants::WINDOW_WIDTH - object->get_radius()) {
-            object->m_current_position.x =
-                constants::WINDOW_WIDTH - object->get_radius();
+        if (object->m_current_position.x > 1.0f - object->get_radius()) {
+            object->m_current_position.x = 1.0f - object->get_radius();
             object->m_old_position.x = object->m_current_position.x;
-        } else if (object->m_current_position.x < 0) {
-            object->m_current_position.x = 0;
+        } else if (object->m_current_position.x < -1.f + object->get_radius()) {
+            object->m_current_position.x = -1.f + object->get_radius();
             object->m_old_position.x = object->m_current_position.x;
         }
     }
@@ -116,4 +113,11 @@ void Solver::add_circle(Vector2<double> position, float radius) {
 
 std::vector<verletCircle::VerletCircle *> &Solver::get_circles() {
     return m_circles;
+}
+
+void Solver::set_gravity(types::Vector2<double> new_gravity) {
+    m_gravity = new_gravity;
+}
+void Solver::reset_gravity() {
+    m_gravity = {0.0f, -2.f};
 }

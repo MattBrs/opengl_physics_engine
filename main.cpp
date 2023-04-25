@@ -110,8 +110,8 @@ void run() {
     //     g_window.handle_event(event, g_renderer);
     // }
 
-    g_physics_simulation.add_circle({480.f, 360.f}, 20.0f);
-    g_physics_simulation.add_circle({482.f, 180.f}, 20.0f);
+    g_physics_simulation.add_circle({0.f, 0.7f}, 0.03f);
+    g_physics_simulation.add_circle({0.f, 0.5f}, 0.03f);
 
     glEnable(GL_DEPTH_TEST);
 
@@ -172,15 +172,15 @@ void run() {
                 verlet_circles[i]->m_current_position.x,
                 verlet_circles[i]->m_current_position.y, 0.0f);
 
-            position.x = -1.0f + 2.0f * (position.x / constants::WINDOW_WIDTH);
-            position.y = 1.0f - 2.0f * (position.y / constants::WINDOW_HEIGHT);
+            // position.x = -1.0f + 2.0f * (position.x /
+            // constants::WINDOW_WIDTH); position.y = 1.0f - 2.0f * (position.y
+            // / constants::WINDOW_HEIGHT);
 
             model = glm::translate(model, position);
-            model = glm::scale(model, glm::vec3(0.0490f, 0.0490f, 1.0f));
-
-            // printf(
-            //     "\n\nclamped:  %f\n\n",
-            //     glm::clamp(verlet_circles[i]->get_radius(), -1.0f, 1.0f));
+            model = glm::scale(
+                model, glm::vec3(
+                           verlet_circles[i]->get_radius(),
+                           verlet_circles[i]->get_radius(), 1.0f));
 
             // set matrix for object translation
             glm::mat4 view = glm::mat4(1.0f);
@@ -188,15 +188,8 @@ void run() {
 
             // set projection matrix to preserve aspect ratio after window size
             // changes
-            //
-
             glm::mat4 projection = glm::mat4(1.0f);
             projection = glm::ortho(-aspect, aspect, -1.0f, 1.0f);
-            // projection = glm::ortho(
-            //     -((float)constants::WINDOW_WIDTH / 2.0f),
-            //     (float)constants::WINDOW_WIDTH / 2.0f,
-            //     (float)constants::WINDOW_HEIGHT / 2.0f,
-            //     -((float)constants::WINDOW_HEIGHT / 2.0f));
 
             circle_shader.set_mat4f("model", model);
             circle_shader.set_mat4f("view", view);
@@ -269,10 +262,18 @@ void process_input(GLFWwindow *window) {
         g_sim_running = true;
     } else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
         g_sim_running = false;
+    } else if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
+        g_physics_simulation.reset_gravity();
     }
 
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
-        printf("");
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
+        g_physics_simulation.set_gravity({-2.0f, 0.f});
+    } else if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
+        g_physics_simulation.set_gravity({2.0f, 0.f});
+    } else if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+        g_physics_simulation.set_gravity({0.0f, 2.f});
+    } else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+        g_physics_simulation.reset_gravity();
     }
 }
 
@@ -404,10 +405,7 @@ void create_triangle_tex() {
 }
 
 void spawn_circle(double pos_x, double pos_y) {
-    for (int i = 0; i < 10; ++i) {
-        g_physics_simulation.add_circle({pos_x - i * 5, pos_y - i * 5}, 20.f);
-    }
-    // g_physics_simulation.add_circle({pos_x, pos_y}, 20.f);
+    g_physics_simulation.add_circle({pos_x, pos_y}, 0.03f);
 }
 
 void mouse_button_callback(
@@ -417,7 +415,11 @@ void mouse_button_callback(
 
         glfwGetCursorPos(g_window.get_window(), &pos_x, &pos_y);
 
-        spawn_circle(pos_x, pos_y);
+        spawn_circle(
+            normalize_value(
+                pos_x, 0, (float)constants::WINDOW_WIDTH, -1.0f, 1.0f),
+            normalize_value(
+                pos_y, (float)constants::WINDOW_HEIGHT, 0, -1.0f, 1.0f));
     }
 }
 
