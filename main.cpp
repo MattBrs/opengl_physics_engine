@@ -51,6 +51,9 @@ void process_input(GLFWwindow *window);
 void create_texture();
 void mouse_button_callback(
     GLFWwindow *window, int button, int action, int mods);
+float normalize_value(
+    float value, float range_min_1, float range_max_1, float range_min_2,
+    float range_max_2);
 
 int main(int argc, char *args[]) {
     if (!init()) {
@@ -107,8 +110,8 @@ void run() {
     //     g_window.handle_event(event, g_renderer);
     // }
 
-    g_physics_simulation.add_circle({480.f, 360.f}, 20.f);
-    g_physics_simulation.add_circle({482.f, 180.f}, 20.f);
+    g_physics_simulation.add_circle({480.f, 360.f}, 20.0f);
+    g_physics_simulation.add_circle({482.f, 180.f}, 20.0f);
 
     glEnable(GL_DEPTH_TEST);
 
@@ -173,10 +176,11 @@ void run() {
             position.y = 1.0f - 2.0f * (position.y / constants::WINDOW_HEIGHT);
 
             model = glm::translate(model, position);
-            model = glm::scale(
-                model, glm::vec3(
-                           verlet_circles[i]->get_radius() / 500.f,
-                           verlet_circles[i]->get_radius() / 500.f, 1.0f));
+            model = glm::scale(model, glm::vec3(0.0490f, 0.0490f, 1.0f));
+
+            // printf(
+            //     "\n\nclamped:  %f\n\n",
+            //     glm::clamp(verlet_circles[i]->get_radius(), -1.0f, 1.0f));
 
             // set matrix for object translation
             glm::mat4 view = glm::mat4(1.0f);
@@ -184,8 +188,15 @@ void run() {
 
             // set projection matrix to preserve aspect ratio after window size
             // changes
+            //
+
             glm::mat4 projection = glm::mat4(1.0f);
-            // projection = glm::ortho(-aspect, aspect, -1.f, 1.f);
+            projection = glm::ortho(-aspect, aspect, -1.0f, 1.0f);
+            // projection = glm::ortho(
+            //     -((float)constants::WINDOW_WIDTH / 2.0f),
+            //     (float)constants::WINDOW_WIDTH / 2.0f,
+            //     (float)constants::WINDOW_HEIGHT / 2.0f,
+            //     -((float)constants::WINDOW_HEIGHT / 2.0f));
 
             circle_shader.set_mat4f("model", model);
             circle_shader.set_mat4f("view", view);
@@ -396,6 +407,7 @@ void spawn_circle(double pos_x, double pos_y) {
     for (int i = 0; i < 10; ++i) {
         g_physics_simulation.add_circle({pos_x - i * 5, pos_y - i * 5}, 20.f);
     }
+    // g_physics_simulation.add_circle({pos_x, pos_y}, 20.f);
 }
 
 void mouse_button_callback(
@@ -404,6 +416,15 @@ void mouse_button_callback(
         double pos_x, pos_y;
 
         glfwGetCursorPos(g_window.get_window(), &pos_x, &pos_y);
+
         spawn_circle(pos_x, pos_y);
     }
+}
+
+float normalize_value(
+    float value, float range_min_1, float range_max_1, float range_min_2,
+    float range_max_2) {
+    return ((range_max_2 - range_min_2) * (value - range_min_1) /
+            (range_max_1 - range_min_1)) +
+           range_min_2;
 }

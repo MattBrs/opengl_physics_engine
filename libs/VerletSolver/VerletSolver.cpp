@@ -29,7 +29,7 @@ void Solver::apply_gravity() {
 }
 
 void Solver::update(double delta_time) {
-    const int    sub_steps = 8;
+    const int    sub_steps = 2;
     const double sub_delta_time = delta_time / sub_steps;
 
     for (int i = 0; i < sub_steps; ++i) {
@@ -86,6 +86,7 @@ void Solver::handle_collisions() {
             const float min_distance = obj_1.get_radius() + obj_2.get_radius();
 
             if (distance <= min_distance * min_distance) {
+
                 const float     new_distance = sqrt(distance);
                 Vector2<double> n = v / new_distance;
 

@@ -62,8 +62,6 @@ bool Window::init() {
     m_window_width = WINDOW_WIDTH;
     m_window_heigth = WINDOW_HEIGHT;
 
-    glViewport(0, 0, m_buffer_width, m_buffer_heigth);
-
     // when window is resized, adjust viewport size
     glfwSetFramebufferSizeCallback(m_window, framebuffer_size_callback);
     glfwSetWindowSizeCallback(m_window, window_size_callback);
