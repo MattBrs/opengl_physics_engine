@@ -1,5 +1,6 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <OpenGL/OpenGL.h>
 #include <OpenGL/gl3.h>
 
 #include "Constants.hpp"
@@ -7,6 +8,7 @@
 #include <cstdio>
 #include <sstream>
 #include <sys/types.h>
+#include <utility>
 
 using namespace constants;
 
@@ -30,6 +32,7 @@ bool Window::init() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
     // create gl window
     m_window = glfwCreateWindow(
@@ -63,6 +66,7 @@ bool Window::init() {
 
     // when window is resized, adjust viewport size
     glfwSetFramebufferSizeCallback(m_window, framebuffer_size_callback);
+    glfwSetWindowSizeCallback(m_window, window_size_callback);
 
     unsigned int major =
         glfwGetWindowAttrib(m_window, GLFW_CONTEXT_VERSION_MAJOR);
@@ -81,14 +85,6 @@ Window::~Window() {
 void Window::free() {
     glfwDestroyWindow(m_window);
     glfwTerminate();
-}
-
-int Window::get_window_width() {
-    return m_window_width;
-}
-
-int Window::get_window_heigth() {
-    return m_window_heigth;
 }
 
 bool Window::has_keyboard_focus() {
@@ -110,4 +106,12 @@ GLFWwindow *&Window::get_window() {
 void Window::framebuffer_size_callback(
     GLFWwindow *window, int width, int height) {
     glViewport(0, 0, width, height);
+}
+
+void Window::window_size_callback(GLFWwindow *window, int width, int heigth) {
+    // do nothing
+}
+
+std::pair<int, int> Window::get_window_size() {
+    return {m_window_width, m_window_heigth};
 }

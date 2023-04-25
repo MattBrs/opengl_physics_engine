@@ -1,3 +1,7 @@
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 #include "Shader.hpp"
 #include <cstdio>
 #include <fstream>
@@ -111,4 +115,10 @@ void Shader::use() {
 
 unsigned int Shader::get_program_id() {
     return m_shader_id;
+}
+
+void Shader::set_mat4f(const std::string name, const glm::mat4 &value) const {
+    glUniformMatrix4fv(
+        glGetUniformLocation(m_shader_id, name.c_str()), 1, GL_FALSE,
+        glm::value_ptr(value));
 }

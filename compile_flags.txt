@@ -8,8 +8,10 @@
 -I./libs/VerletObject
 -I./libs/VerletSolver
 -I./libs/VerletRect
+-I./libs/VerletCircle
 -I./libs/Shader
 -I.libs/stb_image
+-I./libs/Shapes
 -framework OpenGL
 -framework IOKit
 -framework Cocoa
